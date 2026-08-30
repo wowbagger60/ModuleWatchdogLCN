@@ -1,0 +1,14 @@
+{
+    "id": "{0C4ABAD3-2EB4-4996-82A2-8F292D2FF4E6}",
+    "name": "ModuleWatchdogLCN",
+    "type": 3,
+    "vendor": "LCN",
+    "aliases": [
+        "Module Watchdog LCN"
+    ],
+    "url": "https://github.com/wowbagger60/ModuleWatchdogLCN",
+    "parentRequirements": [],
+    "childRequirements": [],
+    "implemented": [],
+    "prefix": "MWLCN"
+}

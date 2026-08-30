@@ -1,0 +1,12 @@
+{
+    "id": "{AA334398-A581-46A2-BDEF-766B9554B040}",
+    "author": "Ulrich Schweizer",
+    "name": "Module Watchdog LCN",
+    "url": "https://github.com/wowbagger60/ModuleWatchdogLCN",
+    "compatibility": {
+        "version": "8.1"
+    },
+    "version": "3.0",
+    "build": 6,
+    "date": 1788104400
+}

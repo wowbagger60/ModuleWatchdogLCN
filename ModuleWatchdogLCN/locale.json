@@ -1,0 +1,25 @@
+{
+    "translations": {
+        "de": {
+            "Status": "Status",
+            "Check interval": "Abfrage-Intervall",
+            "Minimum time between probes": "Minimale Zeit zwischen zwei Probes",
+            "Maximum tries": "Maximale Anzahl Versuche",
+            "Publish interval": "Veröffentlichungsintervall",
+            "LCN modules": "LCN-Module",
+            "Active": "Aktiv",
+            "Instance ID": "Instanz-ID",
+            "LCN module": "LCN-Modul",
+            "Name": "Name",
+            "seconds": "Sekunden",
+            "milliseconds": "Millisekunden",
+            "Watchdog active.": "Watchdog aktiv.",
+            "Check interval must be greater than zero.": "Das Abfrage-Intervall muss grösser als 0 sein.",
+            "Command interval must be greater than zero.": "Der Mindestabstand zwischen Probes muss grösser als 0 sein.",
+            "Maximum tries must be greater than zero.": "Die maximale Anzahl Versuche muss grösser als 0 sein.",
+            "Publish interval must be greater than zero.": "Das Veröffentlichungsintervall muss grösser als 0 sein.",
+            "An LCN module must be selected in every row.": "In jeder Zeile muss ein LCN-Modul ausgewählt werden.",
+            "An LCN module may only be configured once.": "Ein LCN-Modul darf nur einmal konfiguriert werden."
+        }
+    }
+}
