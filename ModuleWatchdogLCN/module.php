@@ -93,7 +93,8 @@ class ModuleWatchdogLCN extends IPSModuleStrict
                     'name'    => 'CommandInterval',
                     'caption' => 'Minimum time between probes',
                     'suffix'  => 'milliseconds',
-                    'minimum' => 1
+                    'minimum' => 1,
+                    'maximum' => 60000
                 ],
                 [
                     'type'    => 'NumberSpinner',
@@ -181,7 +182,7 @@ class ModuleWatchdogLCN extends IPSModuleStrict
         $statusChanged = false;
 
         while ($queue !== []) {
-            $now = $this->nowMilliseconds();
+            $now = time();
             $head = $queue[0];
 
             if ((int) $head['NextDue'] > $now) {
@@ -193,7 +194,7 @@ class ModuleWatchdogLCN extends IPSModuleStrict
             if (!(bool) $head['Enabled']) {
                 $head['Status'] = self::STATUS_DISABLED;
                 $head['Try'] = 0;
-                $head['NextDue'] = $now + $this->intervalMilliseconds();
+                $head['NextDue'] = $now + $this->ReadPropertyInteger('Interval');
                 $queue[] = $head;
                 continue;
             }
@@ -213,7 +214,7 @@ class ModuleWatchdogLCN extends IPSModuleStrict
             }
 
             $lastProbeAt = (int) $this->GetBuffer('LastProbeAt');
-            $commandReadyAt = $lastProbeAt + $this->ReadPropertyInteger('CommandInterval');
+            $commandReadyAt = $lastProbeAt + $this->commandIntervalSeconds();
             if ($now < $commandReadyAt) {
                 array_unshift($queue, $head);
                 break;
@@ -221,11 +222,11 @@ class ModuleWatchdogLCN extends IPSModuleStrict
 
             if ($this->sendProbe($head)) {
                 $head['Try'] = (int) $head['Try'] + 1;
-                $head['LastTrigger'] = intdiv($now, 1000);
+                $head['LastTrigger'] = $now;
                 $this->SetBuffer('LastProbeAt', (string) $now);
             }
 
-            $head['NextDue'] = $now + $this->intervalMilliseconds();
+            $head['NextDue'] = $now + $this->ReadPropertyInteger('Interval');
             $queue[] = $head;
             break;
         }
@@ -251,7 +252,7 @@ class ModuleWatchdogLCN extends IPSModuleStrict
                     'LastSeen'    => (int) $entry['LastSeen'],
                     'LastTrigger' => (int) $entry['LastTrigger'],
                     'Try'         => (int) $entry['Try'],
-                    'NextDue'     => intdiv((int) $entry['NextDue'], 1000)
+                    'NextDue'     => (int) $entry['NextDue']
                 ];
             }
         }
@@ -269,7 +270,7 @@ class ModuleWatchdogLCN extends IPSModuleStrict
                 'LastSeen'    => (int) $entry['LastSeen'],
                 'LastTrigger' => (int) $entry['LastTrigger'],
                 'Try'         => (int) $entry['Try'],
-                'NextDue'     => intdiv((int) $entry['NextDue'], 1000)
+                'NextDue'     => (int) $entry['NextDue']
             ];
         }
         ksort($result, SORT_NUMERIC);
@@ -285,7 +286,7 @@ class ModuleWatchdogLCN extends IPSModuleStrict
         $queue = $this->getQueue();
         $found = false;
         $statusChanged = false;
-        $now = $this->nowMilliseconds();
+        $now = time();
 
         foreach ($queue as $index => $entry) {
             if ((int) $entry['InstanceID'] !== $moduleID) {
@@ -297,7 +298,7 @@ class ModuleWatchdogLCN extends IPSModuleStrict
             $oldStatus = (string) $entry['Status'];
             $entry['LastSeen'] = time();
             $entry['Try'] = 0;
-            $entry['NextDue'] = $now + $this->intervalMilliseconds();
+            $entry['NextDue'] = $now + $this->ReadPropertyInteger('Interval');
             $entry['Status'] = (bool) $entry['Enabled'] ? self::STATUS_ALIVE : self::STATUS_DISABLED;
             $queue[] = $entry;
             $statusChanged = $oldStatus !== (string) $entry['Status'];
@@ -323,17 +324,18 @@ class ModuleWatchdogLCN extends IPSModuleStrict
             return;
         }
 
-        $now = $this->nowMilliseconds();
+        $now = time();
         $head = $queue[0];
         $wakeAt = (int) $head['NextDue'];
 
         if ((bool) $head['Enabled']) {
             $lastProbeAt = (int) $this->GetBuffer('LastProbeAt');
-            $wakeAt = max($wakeAt, $lastProbeAt + $this->ReadPropertyInteger('CommandInterval'));
+            $wakeAt = max($wakeAt, $lastProbeAt + $this->commandIntervalSeconds());
         }
 
-        $delay = max(1, $wakeAt - $now);
-        $this->SetTimerInterval('Scheduler', $delay);
+        $maxTimerSeconds = intdiv(PHP_INT_MAX, 1000);
+        $delaySeconds = min(max(1, $wakeAt - $now), $maxTimerSeconds);
+        $this->SetTimerInterval('Scheduler', $delaySeconds * 1000);
     }
 
     private function publishStatus(): void
@@ -350,8 +352,8 @@ class ModuleWatchdogLCN extends IPSModuleStrict
     {
         $queue = [];
         $variableMap = [];
-        $now = $this->nowMilliseconds();
-        $nextDue = $now + $this->intervalMilliseconds();
+        $now = time();
+        $nextDue = $now + $this->ReadPropertyInteger('Interval');
 
         foreach ($this->decodeArray($this->ReadPropertyString('Modules')) as $row) {
             $moduleID = (int) ($row['InstanceID'] ?? 0);
@@ -431,7 +433,7 @@ class ModuleWatchdogLCN extends IPSModuleStrict
             $this->SetStatus(IS_EBASE + 1);
             return false;
         }
-        if ($this->ReadPropertyInteger('CommandInterval') < 1) {
+        if ($this->ReadPropertyInteger('CommandInterval') < 1 || $this->ReadPropertyInteger('CommandInterval') > 60000) {
             $this->SetStatus(IS_EBASE + 2);
             return false;
         }
@@ -484,14 +486,9 @@ class ModuleWatchdogLCN extends IPSModuleStrict
         $this->SetBuffer('Queue', json_encode(array_values($queue), JSON_THROW_ON_ERROR));
     }
 
-    private function intervalMilliseconds(): int
+    private function commandIntervalSeconds(): int
     {
-        return $this->ReadPropertyInteger('Interval') * 1000;
-    }
-
-    private function nowMilliseconds(): int
-    {
-        return (int) round(microtime(true) * 1000);
+        return max(1, (int) ceil($this->ReadPropertyInteger('CommandInterval') / 1000));
     }
 
     private function decodeArray(string $json): array
